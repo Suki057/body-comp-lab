@@ -1,4 +1,4 @@
-const CACHE = 'bodycomp-v2';
+const CACHE = 'bodycomp-v3';
 const FILES = ['index.html', 'manifest.webmanifest', 'icon.svg', 'icon-512.png', 'icon-192.png', 'apple-touch-icon.png', 'sw.js'];
 
 self.addEventListener('install', e => {
