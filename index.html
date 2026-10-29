@@ -35,6 +35,8 @@
     min-height:100vh;
     -webkit-font-smoothing:antialiased;
     padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    overflow-x:hidden;
+    overscroll-behavior-y:none;
   }
   .wrap{max-width:760px;margin:0 auto;padding:18px 16px 104px;}
   header.app{
@@ -299,13 +301,15 @@
       <input id="targetDate" type="date">
       <div class="field-note" id="targetDateNote"></div>
     </div>
-    <div class="field">
-      <label>每日运动额外消耗（kcal，可填 0）</label>
-      <input id="ex" type="number" inputmode="numeric" value="150" min="0" max="1500" step="10">
-    </div>
 
     <div id="goalOut"></div>
-    <button class="btn ghost" id="saveBtn" style="margin-top:14px;">保存此方案到本机</button>
+
+    <div class="field" style="margin-top:18px;">
+      <label>每日运动额外消耗（kcal，默认 0）</label>
+      <input id="ex" type="number" inputmode="numeric" value="0" min="0" max="1500" step="10">
+    </div>
+
+    <button class="btn ghost" id="saveBtn" style="margin-top:16px;">保存此方案到本机</button>
   </div>
   </section>
 
@@ -605,7 +609,7 @@
     document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     const t=document.getElementById(id); if(t) t.classList.add('active');
     document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.target===id));
-    window.scrollTo({top:0,behavior:'smooth'});
+    window.scrollTo(0,0);
   }
   document.querySelectorAll('#tabbar button').forEach(b=> b.onclick=()=>switchTab(b.dataset.target));
 
@@ -615,8 +619,6 @@
   $('calcBtn').onclick = ()=>{
     run();
     switchTab('panel-basic');
-    const rc = $('resultCard');
-    if(rc) rc.scrollIntoView({behavior:'smooth', block:'start'});
   };
   ['tgw','tgbf','phase','targetDate','ex'].forEach(id=>{
     const el = $(id); if(!el) return;
