@@ -480,15 +480,16 @@
     $('rBmr').textContent = Math.round(d.bmr);
     $('rTdee').textContent = Math.round(d.tdee);
 
-    let bdet = 'BMR 各口径：';
-    bdet += 'Mifflin <b>'+Math.round(d.miff)+'</b>';
+    const methodName = {miff:'Mifflin-St Jeor',katch:'Katch-McArdle',hb:'Harris-Benedict',avg:'三者平均'}[d.method];
+    let bdet = '当前采用：<b style="color:var(--red);">'+methodName+'</b><br>';
+    bdet += 'BMR 各口径：Mifflin <b>'+Math.round(d.miff)+'</b>';
     if(d.katch!==null) bdet += ' · Katch-McArdle <b>'+Math.round(d.katch)+'</b>';
     bdet += ' · Harris-Benedict <b>'+Math.round(d.hb)+'</b>';
-    $('bmrDetail').innerHTML = bdet + '<br>当前采用：<b>'+ ({miff:'Mifflin-St Jeor',katch:'Katch-McArdle',hb:'Harris-Benedict',avg:'三者平均'})[d.method] +'</b>';
+    $('bmrDetail').innerHTML = bdet;
 
     if(d.curLBM!==null){
       $('compNow').innerHTML =
-        '<div class="bmr-list">当前体成分：瘦体重(LBM) <b>'+d.curLBM.toFixed(1)+' kg</b> · 脂肪 <b>'+d.curFat.toFixed(1)+' kg</b> ('+ (d.curBF!=null? d.curBF.toFixed(1)+'%':'') +')</div>';
+        '<div class="bmr-list">当前体成分：<br>瘦体重(LBM) <b>'+d.curLBM.toFixed(1)+' kg</b> · 脂肪 <b>'+d.curFat.toFixed(1)+' kg</b> ('+ (d.curBF!=null? d.curBF.toFixed(1)+'%':'') +')</div>';
     } else {
       $('compNow').innerHTML = '<div class="bmr-list">未填体脂率，体成分拆分不可用（建议填写更精准）。</div>';
     }
@@ -637,10 +638,7 @@
   // ---------- 事件 ----------
   let computed=false;
   function run(){ render(compute()); computed=true; }
-  $('calcBtn').onclick = ()=>{
-    run();
-    switchTab('panel-basic');
-  };
+  $('calcBtn').onclick = ()=>{ run(); };  // 就地更新结果，不滚动不跳转
   ['tgw','tgbf','phase','targetDate','ex'].forEach(id=>{
     const el = $(id); if(!el) return;
     el.addEventListener('input', ()=>{ if(computed) render(compute()); });
