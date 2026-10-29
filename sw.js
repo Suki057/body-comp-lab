@@ -1,5 +1,5 @@
-const CACHE = 'bodycomp-v1';
-const FILES = ['index.html', 'manifest.webmanifest', 'icon.svg', 'sw.js'];
+const CACHE = 'bodycomp-v2';
+const FILES = ['index.html', 'manifest.webmanifest', 'icon.svg', 'icon-512.png', 'icon-192.png', 'apple-touch-icon.png', 'sw.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
