@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#e8413a" />
+<title>体成分计算器 · Body Comp Lab</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<style>
+  :root{
+    --paper:#fff8ec; --paper2:#fff3df;
+    --card:#fffdf8; --card-soft:#fef1d8;
+    --ink:#3b3328; --ink-soft:#8a7d68;
+    --red:#e8413a; --red-d:#c5302a;
+    --yellow:#ffd23f; --blue:#46a7e0; --green:#5fb84e;
+    --primary:var(--red); --primary-d:var(--red-d);
+    --accent:var(--red); --accent-d:var(--red-d);
+    --bulk:var(--green); --maintain:var(--blue);
+    --line:#ecdfc4;
+    --warn:#d98324;
+    --r:14px;
+    --shadow:0 5px 0 rgba(59,51,40,.14), 0 9px 22px rgba(59,51,40,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(180deg, rgba(255,248,236,.6), rgba(255,243,223,.6)),
+      repeating-linear-gradient(0deg, transparent 0 33px, #f3e8d2 33px 34px);
+    background-attachment:fixed;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:18px 16px 104px;}
+  header.app{
+    text-align:center;margin:8px 0 18px;
+  }
+  header.app .logo{
+    width:66px;height:66px;margin:0 auto 6px;
+    display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(0 4px 0 rgba(59,51,40,.15));
+  }
+  header.app h1{font-size:23px;margin:2px 0 0;letter-spacing:1px;}
+  header.app p{margin:6px 0 0;color:var(--ink-soft);font-size:13px;}
+
+  .card{
+    background:var(--card);
+    border:2.5px solid var(--ink);
+    border-radius:20px 14px 18px 12px / 14px 18px 12px 20px;
+    box-shadow:var(--shadow);padding:18px 16px;margin:14px 0;
+  }
+  .card h2{
+    font-size:17px;margin:0 0 14px;display:flex;align-items:center;gap:8px;
+    position:relative;
+  }
+  .card h2 .dot{width:11px;height:11px;background:var(--red);border:1.5px solid var(--ink);border-radius:50% 50% 50% 2px;transform:rotate(8deg);}
+  .card h2::after{
+    content:"";position:absolute;left:0;right:0;bottom:-6px;height:5px;
+    background:radial-gradient(circle at 6px 3px,var(--yellow) 0 4px,transparent 4px) repeat-x;
+    background-size:14px 5px;opacity:.85;
+  }
+  .hint{font-size:12px;color:var(--ink-soft);margin:-6px 0 12px;line-height:1.6;}
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
+  .field input,.field select{
+    width:100%;padding:11px 12px;font-size:15px;border:1px solid var(--line);
+    border-radius:11px;background:#fbfdfc;color:var(--ink);outline:none;
+  }
+  .field input:focus,.field select:focus{border-color:var(--primary);background:#fff;}
+  .row{display:flex;gap:10px;}
+  .row .field{flex:1;}
+
+  .seg{display:flex;gap:8px;flex-wrap:wrap;}
+  .seg label{
+    flex:1;min-width:64px;text-align:center;padding:10px 6px;border:1px solid var(--line);
+    border-radius:11px;background:#fbfdfc;font-size:14px;cursor:pointer;color:var(--ink-soft);
+    transition:.15s;margin:0;
+  }
+  .seg input{display:none;}
+  .seg input:checked + span{color:var(--primary-d);font-weight:600;}
+  .seg label:has(input:checked){border-color:var(--ink);background:#fff2d6;color:var(--red-d);}
+
+  .btn{
+    display:block;width:100%;padding:14px;border:2.5px solid var(--ink);border-radius:14px 10px 14px 10px;
+    background:linear-gradient(135deg,var(--yellow),#ffb43f);
+    color:var(--ink);font-size:17px;font-weight:700;cursor:pointer;
+    box-shadow:0 5px 0 var(--red-d);
+    font-family:inherit;letter-spacing:1px;
+  }
+  .btn:active{transform:translateY(4px);box-shadow:0 1px 0 var(--red-d);}
+  .btn.ghost{background:#fff;color:var(--red-d);box-shadow:0 4px 0 var(--line);border:2.5px solid var(--ink);}
+  .btn.ghost:active{transform:translateY(4px);box-shadow:0 1px 0 var(--line);}
+
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{
+    background:var(--card-soft);border-radius:13px 9px 13px 9px;padding:13px 12px;border:2px solid var(--ink);box-shadow:0 3px 0 rgba(59,51,40,.10);
+  }
+  .stat .k{font-size:12px;color:var(--ink-soft);}
+  .stat .v{font-size:22px;font-weight:700;margin-top:3px;color:var(--primary-d);}
+  .stat .u{font-size:12px;color:var(--ink-soft);font-weight:400;margin-left:2px;}
+
+  .bmr-list{font-size:13px;color:var(--ink-soft);line-height:1.9;margin-top:4px;}
+  .bmr-list b{color:var(--ink);}
+
+  .phase-tag{
+    display:inline-block;padding:5px 13px;border-radius:18px 12px 18px 12px;font-size:13px;font-weight:700;
+    color:#fff;border:2px solid var(--ink);box-shadow:0 3px 0 rgba(59,51,40,.18);
+  }
+  .phase-cut{background:var(--red);}
+  .phase-bulk{background:var(--green);}
+  .phase-maintain{background:var(--blue);}
+  .phase-recomp{background:var(--yellow);color:var(--ink);}
+
+  .timeline{margin:14px 0 4px;}
+  .tl-bar{height:12px;border-radius:8px;background:linear-gradient(90deg,var(--accent),var(--bulk));position:relative;overflow:hidden;}
+  .tl-fill{height:100%;background:rgba(255,255,255,.35);}
+
+  table.macro{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;}
+  table.macro td{padding:9px 8px;border-bottom:1px solid var(--line);}
+  table.macro td:last-child{text-align:right;font-weight:600;color:var(--primary-d);}
+
+  .plan-text{font-size:14px;line-height:1.85;color:var(--ink);}
+  .plan-text li{margin:5px 0;}
+  .chip{display:inline-block;background:#fff;color:var(--red-d);border:1.5px solid var(--ink);border-radius:9px 6px 9px 6px;padding:3px 9px;font-size:12px;margin:2px 4px 2px 0;font-weight:600;}
+
+  .saved-item{
+    background:var(--card-soft);border:2px solid var(--ink);border-radius:14px 10px 14px 10px;
+    padding:12px;margin-bottom:10px;font-size:13px;box-shadow:0 3px 0 rgba(59,51,40,.10);
+  }
+  .saved-item .top{display:flex;justify-content:space-between;align-items:center;}
+  .saved-item .date{color:var(--ink-soft);font-size:12px;}
+  .saved-item button{background:none;border:none;color:var(--red-d);font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;}
+
+  .footer-note{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:24px;line-height:1.7;}
+  .empty{color:var(--ink-soft);font-size:13px;text-align:center;padding:14px;}
+  .callout{
+    position:relative;background:#fff;border:2px solid var(--ink);border-radius:14px;
+    padding:12px 14px 12px 14px;font-size:12.5px;color:var(--ink);line-height:1.75;margin-top:12px;
+    box-shadow:0 3px 0 rgba(59,51,40,.12);
+  }
+  .callout::before{
+    content:"新之助说";position:absolute;top:-12px;left:14px;background:var(--yellow);
+    border:2px solid var(--ink);border-radius:8px;padding:1px 8px;font-size:11px;font-weight:700;color:var(--ink);
+  }
+  .callout::after{
+    content:"";position:absolute;left:22px;bottom:-9px;width:14px;height:14px;background:#fff;
+    border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg);
+  }
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  .tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;gap:2px;overflow-x:auto;
+    background:var(--card);border-top:2.5px solid var(--ink);
+    padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+    box-shadow:0 -5px 16px rgba(59,51,40,.12);-webkit-overflow-scrolling:touch;
+  }
+  .tabbar::-webkit-scrollbar{display:none;}
+  .tabbar button{
+    flex:0 0 auto;min-width:62px;background:none;border:none;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 10px;border-radius:13px;
+    color:var(--ink-soft);font-family:inherit;
+  }
+  .tabbar button .ic{width:23px;height:23px;}
+  .tabbar button span{font-size:11px;font-weight:600;}
+  .tabbar button.active{background:var(--yellow);color:var(--ink);}
+  @media (max-width:420px){.result-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="logo">
+      <svg width="66" height="66" viewBox="0 0 64 64" aria-label=" mascot">
+        <!-- 头发小揪 -->
+        <path d="M23 12 q9 -7 18 0" fill="none" stroke="#3b3328" stroke-width="2.6" stroke-linecap="round"/>
+        <!-- 脸 -->
+        <circle cx="32" cy="27" r="17" fill="#ffe3c4" stroke="#3b3328" stroke-width="2.6"/>
+        <!-- 眼睛 -->
+        <circle cx="26" cy="26" r="2.3" fill="#3b3328"/>
+        <circle cx="38" cy="26" r="2.3" fill="#3b3328"/>
+        <!-- 招牌斜眉 -->
+        <path d="M21 20 q5 -2 9 0" stroke="#3b3328" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <path d="M34 20 q5 -2 9 0" stroke="#3b3328" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <!-- 嘴巴 -->
+        <path d="M28 32 q4 5 8 0" stroke="#3b3328" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <!-- 红上衣 -->
+        <path d="M16 45 q16 11 32 0 l1 13 q-17 7 -34 0 z" fill="#e8413a" stroke="#3b3328" stroke-width="2.6" stroke-linejoin="round"/>
+        <!-- 左手叉腰 -->
+        <path d="M17 47 q-7 1 -8 -5" stroke="#3b3328" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <!-- 右手举哑铃 -->
+        <path d="M47 47 q7 -1 9 -7" stroke="#3b3328" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        <g transform="rotate(24 57 36)" stroke="#3b3328" stroke-width="2.4">
+          <rect x="55.5" y="29" width="3.2" height="15" rx="1.6" fill="#ffd23f"/>
+          <rect x="51" y="27.5" width="11" height="4" rx="2" fill="#ffd23f"/>
+          <rect x="51" y="40.5" width="11" height="4" rx="2" fill="#ffd23f"/>
+        </g>
+      </svg>
+    </div>
+    <h1>体成分计算器</h1>
+    <svg width="200" height="9" viewBox="0 0 200 9" style="display:block;margin:2px auto 0;">
+      <path d="M2 5 q12 -6 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0" fill="none" stroke="#e8413a" stroke-width="3.4" stroke-linecap="round"/>
+    </svg>
+    <p>动感超人出击！算算你的代谢 & 塑形热量 💪</p>
+  </header>
+
+  <section class="panel active" id="panel-basic">
+  <!-- 基础信息 -->
+  <div class="card">
+    <h2><span class="dot"></span>基础信息</h2>
+    <div class="field">
+      <label>性别</label>
+      <div class="seg">
+        <label><input type="radio" name="gender" value="f" checked><span>女</span></label>
+        <label><input type="radio" name="gender" value="m"><span>男</span></label>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>年龄（岁）</label><input id="age" type="number" inputmode="numeric" value="28" min="10" max="100"></div>
+      <div class="field"><label>身高（cm）</label><input id="height" type="number" inputmode="numeric" value="163" min="120" max="220"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>当前体重（kg）</label><input id="weight" type="number" inputmode="decimal" value="62" min="30" max="200" step="0.1"></div>
+      <div class="field"><label>当前体脂率（%）</label><input id="bf" type="number" inputmode="decimal" placeholder="可选" value="30" min="3" max="60" step="0.1"></div>
+    </div>
+    <div class="field">
+      <label>活动水平（决定 TDEE）</label>
+      <select id="activity">
+        <option value="1.2">久坐 · 几乎不运动</option>
+        <option value="1.375" selected>轻度 · 每周 1–3 次轻运动</option>
+        <option value="1.55">中度 · 每周 3–5 次</option>
+        <option value="1.725">高度 · 每周 6–7 次</option>
+        <option value="1.9">极高 · 体力劳动 / 运动员</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>BMR 计算口径（首选方法）</label>
+      <select id="bmrMethod">
+        <option value="miff" selected>Mifflin-St Jeor（通用最准）</option>
+        <option value="katch">Katch-McArdle（有体脂时更准）</option>
+        <option value="hb">Harris-Benedict（传统）</option>
+        <option value="avg">三者取平均</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" id="calcBtn">计算我的代谢与方案</button>
+  </section>
+
+  <!-- 结果 -->
+  <section class="panel" id="panel-metab">
+  <div class="card" id="resultCard" style="display:none;">
+    <h2><span class="dot"></span>代谢结果</h2>
+    <div class="result-grid">
+      <div class="stat"><div class="k">基础代谢 BMR</div><div class="v"><span id="rBmr">—</span><span class="u">kcal</span></div></div>
+      <div class="stat"><div class="k">每日总消耗 TDEE</div><div class="v"><span id="rTdee">—</span><span class="u">kcal</span></div></div>
+    </div>
+    <div class="bmr-list" id="bmrDetail"></div>
+    <div id="compNow" style="margin-top:12px;"></div>
+  </div>
+  </section>
+
+  <!-- 目标规划 -->
+  <section class="panel" id="panel-goal">
+  <div class="card" id="goalCard" style="display:none;">
+    <h2><span class="dot"></span>目标体成分规划</h2>
+    <div class="hint">填写目标体重与体脂，自动判断阶段（减脂 / 增肌 / 维持 / 重组）并推算时间与每日摄入。</div>
+    <div class="row">
+      <div class="field"><label>目标体重（kg）</label><input id="tgw" type="number" inputmode="decimal" value="55" min="30" max="200" step="0.1"></div>
+      <div class="field"><label>目标体脂率（%）</label><input id="tgbf" type="number" inputmode="decimal" value="24" min="3" max="50" step="0.1"></div>
+    </div>
+    <div class="field">
+      <label>阶段（默认自动，可手动覆盖）</label>
+      <select id="phase">
+        <option value="auto" selected>自动判断</option>
+        <option value="cut">减脂期</option>
+        <option value="bulk">增肌期</option>
+        <option value="maintain">维持期</option>
+      </select>
+    </div>
+    <div class="field">
+      <label id="rateLabel">每周变化速度</label>
+      <input id="rate" type="range" min="0.2" max="1" step="0.05" value="0.5" style="width:100%;">
+      <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;" id="rateVal"></div>
+    </div>
+    <div class="field">
+      <label>每日运动额外消耗（kcal，可填 0）</label>
+      <input id="ex" type="number" inputmode="numeric" value="150" min="0" max="1500" step="10">
+    </div>
+
+    <div id="goalOut"></div>
+    <button class="btn ghost" id="saveBtn" style="margin-top:14px;">保存此方案到本机</button>
+  </div>
+  </section>
+
+  <!-- 营养与运动方案 -->
+  <section class="panel" id="panel-plan">
+  <div class="card" id="planCard" style="display:none;">
+    <h2><span class="dot"></span>营养 & 运动塑形方案</h2>
+    <div id="macroOut"></div>
+    <div id="trainOut" style="margin-top:14px;"></div>
+  </div>
+  </section>
+
+  <!-- 历史 -->
+  <section class="panel" id="panel-saved">
+  <div class="card">
+    <h2><span class="dot"></span>已保存方案</h2>
+    <div id="savedList"><div class="empty">还没有保存的方案。算出结果后点“保存此方案到本机”。</div></div>
+  </div>
+
+  <div class="footer-note">
+    数据保存在你本机浏览器（localStorage），不上传服务器。<br>
+    本工具为健康参考，不替代专业医疗 / 营养建议。孕期、疾病或服药者请遵医嘱。
+  </div>
+  </section>
+</div>
+
+<nav class="tabbar" id="tabbar">
+  <button data-target="panel-basic" class="active">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>基础</span>
+  </button>
+  <button data-target="panel-metab">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-4 3-6 5-9z"/></svg>
+    <span>代谢</span>
+  </button>
+  <button data-target="panel-goal">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
+    <span>目标</span>
+  </button>
+  <button data-target="panel-plan">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8v8M18 8v8M3 11v2M21 11v2M6 12h12"/></svg>
+    <span>方案</span>
+  </button>
+  <button data-target="panel-saved">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7"/></svg>
+    <span>存档</span>
+  </button>
+</nav>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const g = n => document.querySelector('input[name="'+n+'"]:checked').value;
+
+  function num(id, dflt){
+    const v = parseFloat($(id).value);
+    return isNaN(v) ? dflt : v;
+  }
+
+  // ---------- 计算 ----------
+  function compute(opts){
+    opts = opts || {};
+    const gender = g('gender');
+    const age = num('age'), H = num('height'), W = num('weight');
+    const BFraw = $('bf').value.trim();
+    const BF = BFraw === '' ? null : parseFloat(BFraw);
+    const act = parseFloat($('activity').value);
+    const method = $('bmrMethod').value;
+
+    // BMR 各口径
+    const miff = gender==='m' ? 10*W+6.25*H-5*age+5 : 10*W+6.25*H-5*age-161;
+    const hb   = gender==='m' ? 88.362+13.397*W+4.799*H-5.677*age : 447.593+9.247*W+3.098*H-4.330*age;
+    let katch = null;
+    if(BF !== null){ const lbm = W*(1-BF/100); katch = 370 + 21.6*lbm; }
+
+    let bmr = miff;
+    if(method==='katch' && katch!==null) bmr = katch;
+    else if(method==='hb') bmr = hb;
+    else if(method==='avg'){ const a=[miff,hb]; if(katch!==null)a.push(katch); bmr = a.reduce((x,y)=>x+y,0)/a.length; }
+
+    const tdee = bmr * act;
+
+    // 当前体成分
+    const curBF = BF===null ? null : BF;
+    const curLBM = curBF===null ? null : W*(1-curBF/100);
+    const curFat = curBF===null ? null : W - curLBM;
+
+    const out = {gender,age,H,W,BF,act,method,miff,hb,katch,bmr,tdee,curBF,curLBM,curFat};
+
+    // 目标
+    const TgW = num('tgw', W), TgBF = num('tgbf', curBF===null?20:curBF);
+    const tgtLBM = TgW*(1-TgBF/100);
+    const tgtFat = TgW - tgtLBM;
+    const fatChange = (curFat===null? null : tgtFat - curFat); // 负=减脂
+    const lbmChange = (curLBM===null? null : tgtLBM - curLBM);
+
+    let phase = $('phase').value;
+    if(phase==='auto'){
+      if(TgW < W-0.15) phase='cut';
+      else if(TgW > W+0.15) phase='bulk';
+      else if(curBF!==null && TgBF < curBF-0.15) phase='recomp';
+      else phase='maintain';
+    }
+
+    const exDaily = num('ex',0);
+    const rate = parseFloat($('rate').value); // 减脂=kg脂肪/周；增肌=kg瘦体/周
+
+    let dailyIntake, weeklyChangeKcal, weeks, changeKg;
+    if(phase==='cut'){
+      const r = (rate>1?1:rate);
+      weeklyChangeKcal = r*7700;
+      dailyIntake = tdee + exDaily - weeklyChangeKcal/7;
+      changeKg = (fatChange===null? (W-TgW) : -fatChange);
+      weeks = changeKg>0 ? changeKg/r : 0;
+    } else if(phase==='bulk'){
+      const r = (rate>1?1:rate);
+      weeklyChangeKcal = r*3000; // 增 1kg 瘦体约需 3000kcal 盈余
+      dailyIntake = tdee + exDaily + weeklyChangeKcal/7;
+      changeKg = (lbmChange===null? (TgW-W) : lbmChange);
+      weeks = changeKg>0 ? changeKg/r : 0;
+    } else { // maintain / recomp
+      dailyIntake = tdee + exDaily;
+      weeks = 0; changeKg = Math.abs(TgW-W);
+    }
+
+    Object.assign(out,{TgW,TgBF,tgtLBM,tgtFat,fatChange,lbmChange,phase,exDaily,rate,dailyIntake,weeks,changeKg});
+    return out;
+  }
+
+  // ---------- 渲染 ----------
+  function render(d){
+    $('resultCard').style.display='';
+    $('goalCard').style.display='';
+    $('planCard').style.display='';
+
+    $('rBmr').textContent = Math.round(d.bmr);
+    $('rTdee').textContent = Math.round(d.tdee);
+
+    let bdet = 'BMR 各口径：';
+    bdet += 'Mifflin <b>'+Math.round(d.miff)+'</b>';
+    if(d.katch!==null) bdet += ' · Katch-McArdle <b>'+Math.round(d.katch)+'</b>';
+    bdet += ' · Harris-Benedict <b>'+Math.round(d.hb)+'</b>';
+    $('bmrDetail').innerHTML = bdet + '<br>当前采用：<b>'+ ({miff:'Mifflin-St Jeor',katch:'Katch-McArdle',hb:'Harris-Benedict',avg:'三者平均'})[d.method] +'</b>';
+
+    if(d.curLBM!==null){
+      $('compNow').innerHTML =
+        '<div class="bmr-list">当前体成分：瘦体重(LBM) <b>'+d.curLBM.toFixed(1)+' kg</b> · 脂肪 <b>'+d.curFat.toFixed(1)+' kg</b> ('+ (d.curBF!=null? d.curBF.toFixed(1)+'%':'') +')</div>';
+    } else {
+      $('compNow').innerHTML = '<div class="bmr-list">未填体脂率，体成分拆分不可用（建议填写更精准）。</div>';
+    }
+
+    // rate label
+    const rlabel = d.phase==='bulk' ? '每周增肌速度（kg 瘦体重/周）' : (d.phase==='maintain'?'维持期无需速度': '每周减脂速度（kg 脂肪/周）');
+    $('rateLabel').textContent = rlabel;
+    $('rateVal').textContent = '当前：'+d.rate.toFixed(2)+' kg/周' + (d.phase==='cut'?'（建议 0.5–0.8，过快易掉肌肉）':'') + (d.phase==='bulk'?'（新手可达 0.4–0.5，老手更慢）':'');
+
+    // goal out
+    const tagClass = {cut:'phase-cut',bulk:'phase-bulk',maintain:'phase-maintain',recomp:'phase-recomp'}[d.phase];
+    const tagTxt = {cut:'减脂期',bulk:'增肌期',maintain:'维持期',recomp:'重组期'}[d.phase];
+
+    let goalHtml = '<div style="margin:6px 0 10px;"><span class="phase-tag '+tagClass+'">'+tagTxt+'</span></div>';
+
+    if(d.curLBM!==null){
+      goalHtml += '<div class="bmr-list">';
+      goalHtml += '目标体成分：瘦体重 <b>'+d.tgtLBM.toFixed(1)+' kg</b> · 脂肪 <b>'+d.tgtFat.toFixed(1)+' kg</b> ('+d.TgBF.toFixed(1)+'%)<br>';
+      if(d.fatChange!==null) goalHtml += '脂肪变化：<b>'+(d.fatChange>=0?'+':'')+d.fatChange.toFixed(1)+' kg</b> · 瘦体重变化：<b>'+(d.lbmChange>=0?'+':'')+d.lbmChange.toFixed(1)+' kg</b><br>';
+      goalHtml += '</div>';
+    }
+
+    if(d.phase==='maintain'){
+      goalHtml += '<div class="stat" style="margin-top:12px;"><div class="k">每日建议摄入（维持）</div><div class="v">'+Math.round(d.dailyIntake)+'<span class="u">kcal</span></div></div>';
+    } else {
+      goalHtml += '<div class="timeline"><div class="tl-bar"><div class="tl-fill" style="width:'+ Math.max(8,Math.min(100, (1 - d.weeks/52)*100)) +'%"></div></div>';
+      goalHtml += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-soft);margin-top:6px;"><span>预计耗时</span><span><b style="color:var(--primary-d)">'+ (d.weeks>0? (d.weeks<52? Math.round(d.weeks)+' 周' : (d.weeks/52).toFixed(1)+' 年') : '—') +'</b></span></div></div>';
+      goalHtml += '<div class="result-grid" style="margin-top:10px;">';
+      goalHtml += '<div class="stat"><div class="k">每日建议摄入</div><div class="v">'+Math.round(d.dailyIntake)+'<span class="u">kcal</span></div></div>';
+      goalHtml += '<div class="stat"><div class="k">相对 TDEE</div><div class="v" style="font-size:18px;">'+ (d.phase==='cut'? '−'+Math.round((d.tdee+d.exDaily)-d.dailyIntake) : '+'+Math.round(d.dailyIntake-(d.tdee+d.exDaily))) +'<span class="u">kcal</span></div></div>';
+      goalHtml += '</div>';
+    }
+    if(d.phase==='cut' && d.rate>0.8){
+      goalHtml += '<div class="callout">⚠️ 减脂速度偏快，可能伴随肌肉流失与代谢下降。建议降至 0.5–0.7 kg/周，并保证力量训练与蛋白质。</div>';
+    }
+    $('goalOut').innerHTML = goalHtml;
+
+    // macros
+    const proteinPerKg = d.phase==='cut'?2.0 : d.phase==='bulk'?1.8 : 1.6;
+    const protein = proteinPerKg * d.W;
+    const fatCals = d.dailyIntake * 0.27;
+    const fatG = fatCals/9;
+    const carbG = Math.max(0,(d.dailyIntake - protein*4 - fatG*9)/4);
+    const water = (d.W*35/1000);
+
+    $('macroOut').innerHTML =
+      '<table class="macro"><tr><td>蛋白质（'+proteinPerKg+' g/kg）</td><td>'+Math.round(protein)+' g</td></tr>'+
+      '<tr><td>脂肪（27% 热量）</td><td>'+Math.round(fatG)+' g</td></tr>'+
+      '<tr><td>碳水（剩余热量）</td><td>'+Math.round(carbG)+' g</td></tr>'+
+      '<tr><td>每日饮水参考</td><td>≈ '+water.toFixed(1)+' L</td></tr></table>'+
+      '<div style="margin-top:8px;">'+
+      (d.phase==='cut'?'<span class="chip">高蛋白保肌</span><span class="chip">碳水训练日集中</span><span class="chip">纤维拉满</span>':
+        d.phase==='bulk'?'<span class="chip">盈余分给碳水</span><span class="chip">训练前后加餐</span><span class="chip">别过量脂肪</span>':
+        '<span class="chip">均衡分配</span><span class="chip">维持活动量</span>')+'</div>';
+
+    // training
+    let train = '<div class="plan-text"><b>动感超人陪练 · 运动塑形建议（'+tagTxt+'）</b><ul>';
+    if(d.phase==='cut'){
+      train += '<li><b>力量训练 3–4 次/周</b>：复合动作为主（深蹲、硬拉、推举），维持肌肉、保代谢。</li>';
+      train += '<li><b>有氧 2–3 次/周</b>：HIIT 20min 或稳态 30–40min，放大热量缺口但不依赖。</li>';
+      train += '<li><b>塑形要点</b>：优先保肌减脂，腰腹/手臂可加孤立训练；体重下降别超过 1%/周。</li>';
+      train += '<li><b>恢复</b>：睡眠 7h+，防止皮质醇升高导致囤脂。</li>';
+    } else if(d.phase==='bulk'){
+      train += '<li><b>力量训练 4–5 次/周</b>：分化训练（推/拉/腿），渐进超负荷是增肌核心。</li>';
+      train += '<li><b>有氧 1–2 次/周</b>：保持心肺，控制体脂别涨太快。</li>';
+      train += '<li><b>塑形要点</b>：盈余 10–15% 即可， surplus 过大只长脂肪；蛋白每公斤 1.8g。</li>';
+      train += '<li><b>记录</b>：每周称重+量围度，肌肉增长慢，给 8–12 周看变化。</li>';
+    } else if(d.phase==='recomp'){
+      train += '<li><b>力量训练 4 次/周</b>：高蛋白+力量，在新手/回归期可“同时减脂增肌”。</li>';
+      train += '<li><b>有氧 2 次/周</b>：中等强度即可。</li>';
+      train += '<li><b>塑形要点</b>：热量维持或微缺，靠训练重塑线条而非单纯掉秤。</li>';
+    } else {
+      train += '<li><b>力量 3 次/周 + 有氧 2 次/周</b>：维持当前体成分与代谢健康。</li>';
+      train += '<li><b>塑形要点</b>：围度比体重更重要，定期拍照记录线条变化。</li>';
+    }
+    train += '</ul></div>';
+    $('trainOut').innerHTML = train;
+  }
+
+  // ---------- 保存 ----------
+  function loadSaved(){
+    try{ return JSON.parse(localStorage.getItem('bcl_saved')||'[]'); }catch(e){ return []; }
+  }
+  function saveSnap(d){
+    const list = loadSaved();
+    const snap = {
+      t: new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),
+      gender:d.gender, age:d.age, H:d.H, W:d.W, BF:d.BF, act:d.act,
+      TgW:d.TgW, TgBF:d.TgBF, phase:d.phase, intake:Math.round(d.dailyIntake), weeks:Math.round(d.weeks)
+    };
+    list.unshift(snap);
+    localStorage.setItem('bcl_saved', JSON.stringify(list.slice(0,20)));
+    renderSaved();
+  }
+  function renderSaved(){
+    const list = loadSaved();
+    const box = $('savedList');
+    if(!list.length){ box.innerHTML='<div class="empty">还没有保存的方案。</div>'; return; }
+    box.innerHTML = list.map((s,i)=>{
+      const ph = {cut:'减脂',bulk:'增肌',maintain:'维持',recomp:'重组'}[s.phase]||s.phase;
+      return '<div class="saved-item"><div class="top"><b>'+ph+' · '+s.W+'→'+s.TgW+'kg / '+ (s.BF!=null?s.BF:'?')+'→'+s.TgBF+'%</b>'+
+        '<button data-i="'+i+'">删除</button></div>'+
+        '<div>每日 '+s.intake+' kcal · 预计 '+ (s.weeks>0? s.weeks+' 周':'—') +' · '+s.t+'</div></div>';
+    }).join('');
+    box.querySelectorAll('button[data-i]').forEach(b=>{
+      b.onclick=()=>{ const l=loadSaved(); l.splice(+b.dataset.i,1); localStorage.setItem('bcl_saved',JSON.stringify(l)); renderSaved(); };
+    });
+  }
+
+  // ---------- 标签导航 ----------
+  function switchTab(id){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    const t=document.getElementById(id); if(t) t.classList.add('active');
+    document.querySelectorAll('#tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.target===id));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+  document.querySelectorAll('#tabbar button').forEach(b=> b.onclick=()=>switchTab(b.dataset.target));
+
+  // ---------- 事件 ----------
+  let computed=false;
+  function run(){ render(compute()); computed=true; }
+  $('calcBtn').onclick = ()=>{ run(); switchTab('panel-metab'); };
+  ['tgw','tgbf','phase','rate','ex'].forEach(id=> $(id).addEventListener('input', ()=>{ if(computed) render(compute()); }));
+
+  $('saveBtn').onclick = ()=>{
+    if(!computed){ alert('请先点“计算”生成方案再保存。'); return; }
+    saveSnap(compute());
+  };
+
+  // 自动载入上次输入
+  try{
+    const last = JSON.parse(localStorage.getItem('bcl_last')||'{}');
+    if(last && Object.keys(last).length){
+      if(last.gender){ document.querySelector('input[name=gender][value="'+last.gender+'"]').checked=true; }
+      ['age','height','weight','bf','tgw','tgbf','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
+      if(last.act) $('activity').value=last.act;
+      if(last.method) $('bmrMethod').value=last.method;
+      if(last.phase) $('phase').value=last.phase;
+    }
+  }catch(e){}
+
+  // 保存输入
+  function persistInput(){
+    const o={gender:g('gender'),age:$('age').value,height:$('height').value,weight:$('weight').value,
+      bf:$('bf').value,act:$('activity').value,method:$('bmrMethod').value,tgw:$('tgw').value,
+      tgbf:$('tgbf').value,phase:$('phase').value,ex:$('ex').value};
+    localStorage.setItem('bcl_last', JSON.stringify(o));
+  }
+  document.querySelectorAll('input,select').forEach(el=> el.addEventListener('change', persistInput));
+
+  renderSaved();
+  // 首次自动算一次
+  run();
+
+  // PWA
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
