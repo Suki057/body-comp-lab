@@ -73,6 +73,8 @@
     border-radius:11px;background:#fbfdfc;color:var(--ink);outline:none;
   }
   .field input:focus,.field select:focus{border-color:var(--primary);background:#fff;}
+  .field input[type=date]{min-height:46px;line-height:1.4;}
+  .field-note{font-size:12px;color:var(--ink-soft);line-height:1.65;margin-top:7px;}
   .row{display:flex;gap:10px;}
   .row .field{flex:1;}
 
@@ -251,18 +253,16 @@
   </div>
 
   <button class="btn" id="calcBtn">计算我的代谢与方案</button>
-  </section>
 
-  <!-- 结果 -->
-  <section class="panel" id="panel-metab">
-  <div class="card" id="resultCard" style="display:none;">
+  <!-- 代谢结果（并入基础页，紧接按钮下方） -->
+  <div class="card" id="resultCard" style="display:none;margin-top:22px;">
     <h2><span class="dot"></span>代谢结果</h2>
     <div class="result-grid">
       <div class="stat"><div class="k">基础代谢 BMR</div><div class="v"><span id="rBmr">—</span><span class="u">kcal</span></div></div>
       <div class="stat"><div class="k">每日总消耗 TDEE</div><div class="v"><span id="rTdee">—</span><span class="u">kcal</span></div></div>
     </div>
     <div class="bmr-list" id="bmrDetail"></div>
-    <div id="compNow" style="margin-top:12px;"></div>
+    <div id="compNow" style="margin-top:14px;"></div>
   </div>
   </section>
 
@@ -285,9 +285,9 @@
       </select>
     </div>
     <div class="field">
-      <label id="rateLabel">每周变化速度</label>
-      <input id="rate" type="range" min="0.2" max="1" step="0.05" value="0.5" style="width:100%;">
-      <div style="font-size:12px;color:var(--ink-soft);margin-top:4px;" id="rateVal"></div>
+      <label for="targetDate">想达到目标体重&amp;体脂的日期</label>
+      <input id="targetDate" type="date">
+      <div class="field-note" id="targetDateNote"></div>
     </div>
     <div class="field">
       <label>每日运动额外消耗（kcal，可填 0）</label>
@@ -326,10 +326,6 @@
   <button data-target="panel-basic" class="active">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
     <span>基础</span>
-  </button>
-  <button data-target="panel-metab">
-    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-4 3-6 5-9z"/></svg>
-    <span>代谢</span>
   </button>
   <button data-target="panel-goal">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
@@ -402,27 +398,53 @@
     }
 
     const exDaily = num('ex',0);
-    const rate = parseFloat($('rate').value); // 减脂=kg脂肪/周；增肌=kg瘦体/周
 
-    let dailyIntake, weeklyChangeKcal, weeks, changeKg;
-    if(phase==='cut'){
-      const r = (rate>1?1:rate);
-      weeklyChangeKcal = r*7700;
-      dailyIntake = tdee + exDaily - weeklyChangeKcal/7;
-      changeKg = (fatChange===null? (W-TgW) : -fatChange);
-      weeks = changeKg>0 ? changeKg/r : 0;
-    } else if(phase==='bulk'){
-      const r = (rate>1?1:rate);
-      weeklyChangeKcal = r*3000; // 增 1kg 瘦体约需 3000kcal 盈余
-      dailyIntake = tdee + exDaily + weeklyChangeKcal/7;
-      changeKg = (lbmChange===null? (TgW-W) : lbmChange);
-      weeks = changeKg>0 ? changeKg/r : 0;
-    } else { // maintain / recomp
-      dailyIntake = tdee + exDaily;
-      weeks = 0; changeKg = Math.abs(TgW-W);
+    // 目标日期 -> 距今天数/周数（据此反推每周所需速度）
+    let targetWeeks = null, hasDate = false;
+    const dateStr = ($('targetDate') && $('targetDate').value) || '';
+    if(dateStr){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const tgt = new Date(dateStr + 'T00:00:00');
+      if(!isNaN(tgt.getTime())){
+        hasDate = true;
+        targetWeeks = Math.round((tgt - today) / 86400000) / 7;
+      }
     }
 
-    Object.assign(out,{TgW,TgBF,tgtLBM,tgtFat,fatChange,lbmChange,phase,exDaily,rate,dailyIntake,weeks,changeKg});
+    let dailyIntake, weeklyChangeKcal, weeks, changeKg, rate;
+
+    if(phase==='cut'){
+      changeKg = Math.max(0, fatChange===null ? (W-TgW) : -fatChange);
+      if(changeKg <= 0.05){
+        rate = 0; weeklyChangeKcal = 0; weeks = 0;
+        dailyIntake = tdee + exDaily;
+      } else {
+        rate = (hasDate && targetWeeks > 0) ? changeKg/targetWeeks : 0.5;
+        rate = Math.max(0.05, Math.min(1.5, rate));
+        weeklyChangeKcal = rate*7700;
+        dailyIntake = tdee + exDaily - weeklyChangeKcal/7;
+        weeks = (hasDate && targetWeeks > 0) ? targetWeeks : changeKg/rate;
+      }
+    } else if(phase==='bulk'){
+      changeKg = Math.max(0, lbmChange===null ? (TgW-W) : lbmChange);
+      if(changeKg <= 0.05){
+        rate = 0; weeklyChangeKcal = 0; weeks = 0;
+        dailyIntake = tdee + exDaily;
+      } else {
+        rate = (hasDate && targetWeeks > 0) ? changeKg/targetWeeks : 0.4;
+        rate = Math.max(0.05, Math.min(1.0, rate));
+        weeklyChangeKcal = rate*3000; // 增 1kg 瘦体约需 3000kcal 盈余
+        dailyIntake = tdee + exDaily + weeklyChangeKcal/7;
+        weeks = (hasDate && targetWeeks > 0) ? targetWeeks : changeKg/rate;
+      }
+    } else { // maintain / recomp
+      dailyIntake = tdee + exDaily;
+      weeks = (hasDate && targetWeeks > 0) ? targetWeeks : 0;
+      changeKg = Math.abs(TgW-W);
+      rate = 0;
+    }
+
+    Object.assign(out,{TgW,TgBF,tgtLBM,tgtFat,fatChange,lbmChange,phase,exDaily,rate,dailyIntake,weeks,changeKg,targetWeeks,hasDate});
     return out;
   }
 
@@ -448,10 +470,23 @@
       $('compNow').innerHTML = '<div class="bmr-list">未填体脂率，体成分拆分不可用（建议填写更精准）。</div>';
     }
 
-    // rate label
-    const rlabel = d.phase==='bulk' ? '每周增肌速度（kg 瘦体重/周）' : (d.phase==='maintain'?'维持期无需速度': '每周减脂速度（kg 脂肪/周）');
-    $('rateLabel').textContent = rlabel;
-    $('rateVal').textContent = '当前：'+d.rate.toFixed(2)+' kg/周' + (d.phase==='cut'?'（建议 0.5–0.8，过快易掉肌肉）':'') + (d.phase==='bulk'?'（新手可达 0.4–0.5，老手更慢）':'');
+    // 目标日期提示
+    const noteEl = $('targetDateNote');
+    if(noteEl){
+      let note;
+      if(d.phase==='maintain'){
+        note = d.hasDate ? '维持期无需增重/减重，到该日期保持当前摄入即可。' : '维持期无需增重/减重，保持当前摄入即可。';
+      } else if(!d.hasDate){
+        note = '未选择日期，暂按默认速度估算（减脂 0.5 / 增肌 0.4 kg/周）。选个日期会自动反推每天该吃多少。';
+      } else if(d.targetWeeks !== null && d.targetWeeks <= 0){
+        note = '请选择一个晚于今天的日期。';
+      } else {
+        const w = d.targetWeeks;
+        const wtxt = w < 1 ? Math.ceil(w*7)+' 天' : (w < 52 ? w.toFixed(1)+' 周' : (w/52).toFixed(1)+' 年');
+        note = '距目标约 '+wtxt+'，需每周约 '+d.rate.toFixed(2)+' kg'+(d.phase==='bulk'?'（瘦体重）':'（脂肪）')+'。';
+      }
+      noteEl.textContent = note;
+    }
 
     // goal out
     const tagClass = {cut:'phase-cut',bulk:'phase-bulk',maintain:'phase-maintain',recomp:'phase-recomp'}[d.phase];
@@ -476,8 +511,10 @@
       goalHtml += '<div class="stat"><div class="k">相对 TDEE</div><div class="v" style="font-size:18px;">'+ (d.phase==='cut'? '−'+Math.round((d.tdee+d.exDaily)-d.dailyIntake) : '+'+Math.round(d.dailyIntake-(d.tdee+d.exDaily))) +'<span class="u">kcal</span></div></div>';
       goalHtml += '</div>';
     }
-    if(d.phase==='cut' && d.rate>0.8){
-      goalHtml += '<div class="callout">⚠️ 减脂速度偏快，可能伴随肌肉流失与代谢下降。建议降至 0.5–0.7 kg/周，并保证力量训练与蛋白质。</div>';
+    if(d.hasDate && d.targetWeeks !== null && d.targetWeeks <= 0){
+      goalHtml += '<div class="callout">⚠️ 目标日期没有晚于今天，没法反推速度。请重新选一个未来的日期。</div>';
+    } else if(d.phase==='cut' && d.rate>0.8){
+      goalHtml += '<div class="callout">⚠️ 按这个日期需每周减约 '+d.rate.toFixed(2)+' kg，节奏偏快，可能掉肌肉、代谢下降。建议把日期往后挪 3–4 周，或把目标放宽到 0.5–0.7 kg/周。</div>';
     }
     $('goalOut').innerHTML = goalHtml;
 
@@ -565,8 +602,17 @@
   // ---------- 事件 ----------
   let computed=false;
   function run(){ render(compute()); computed=true; }
-  $('calcBtn').onclick = ()=>{ run(); switchTab('panel-metab'); };
-  ['tgw','tgbf','phase','rate','ex'].forEach(id=> $(id).addEventListener('input', ()=>{ if(computed) render(compute()); }));
+  $('calcBtn').onclick = ()=>{
+    run();
+    switchTab('panel-basic');
+    const rc = $('resultCard');
+    if(rc) rc.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  ['tgw','tgbf','phase','targetDate','ex'].forEach(id=>{
+    const el = $(id); if(!el) return;
+    el.addEventListener('input', ()=>{ if(computed) render(compute()); });
+    el.addEventListener('change', ()=>{ if(computed) render(compute()); });
+  });
 
   $('saveBtn').onclick = ()=>{
     if(!computed){ alert('请先点“计算”生成方案再保存。'); return; }
@@ -578,18 +624,30 @@
     const last = JSON.parse(localStorage.getItem('bcl_last')||'{}');
     if(last && Object.keys(last).length){
       if(last.gender){ document.querySelector('input[name=gender][value="'+last.gender+'"]').checked=true; }
-      ['age','height','weight','bf','tgw','tgbf','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
+      ['age','height','weight','bf','tgw','tgbf','targetDate','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
       if(last.act) $('activity').value=last.act;
       if(last.method) $('bmrMethod').value=last.method;
       if(last.phase) $('phase').value=last.phase;
     }
   }catch(e){}
 
+  // 日期框：最早今天；未填时给一个 12 周后的默认目标
+  (function initDate(){
+    const el = $('targetDate'); if(!el) return;
+    const iso = d => {
+      const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+      return y+'-'+m+'-'+dd;
+    };
+    const today = new Date(); today.setHours(0,0,0,0);
+    el.min = iso(today);
+    if(!el.value){ el.value = iso(new Date(today.getTime() + 84*86400000)); }
+  })();
+
   // 保存输入
   function persistInput(){
     const o={gender:g('gender'),age:$('age').value,height:$('height').value,weight:$('weight').value,
       bf:$('bf').value,act:$('activity').value,method:$('bmrMethod').value,tgw:$('tgw').value,
-      tgbf:$('tgbf').value,phase:$('phase').value,ex:$('ex').value};
+      tgbf:$('tgbf').value,phase:$('phase').value,targetDate:$('targetDate').value,ex:$('ex').value};
     localStorage.setItem('bcl_last', JSON.stringify(o));
   }
   document.querySelectorAll('input,select').forEach(el=> el.addEventListener('change', persistInput));
