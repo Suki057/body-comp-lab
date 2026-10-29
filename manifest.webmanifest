@@ -1,0 +1,19 @@
+{
+  "name": "体成分计算器 · Body Comp Lab",
+  "short_name": "体成分",
+  "description": "基础代谢 BMR、每日消耗 TDEE、减脂/增肌/维持期热量规划与运动塑形方案",
+  "start_url": "index.html",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e9f6f1",
+  "theme_color": "#2f9e8f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
