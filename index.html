@@ -150,6 +150,22 @@
   .saved-item button{background:none;border:none;color:var(--red-d);font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;}
 
   .footer-note{font-size:11.5px;color:var(--ink-soft);text-align:center;margin-top:24px;line-height:1.7;}
+
+  /* 信息页 */
+  .info-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;}
+  .info-nav button{
+    background:#fff6e9;border:1.5px solid var(--ink);border-radius:10px;
+    padding:9px 18px;font-size:13.5px;font-weight:600;font-family:inherit;
+    color:var(--ink);cursor:pointer;box-shadow:2px 2px 0 rgba(43,29,14,.14);
+  }
+  .info-nav button:active{transform:translateY(1px);}
+  .info-nav button.off{visibility:hidden;}
+  .info-date{font-size:16px;font-weight:700;letter-spacing:.5px;}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .info-grid .cell{background:var(--card-soft);border:1px solid var(--line);border-radius:11px;padding:10px 12px;}
+  .info-grid .cell .k{font-size:12px;color:var(--ink-soft);}
+  .info-grid .cell .v{font-size:15px;font-weight:600;margin-top:3px;}
+  .info-sub{font-size:13.5px;font-weight:600;margin:18px 0 10px;color:var(--ink);}
   .empty{color:var(--ink-soft);font-size:13px;text-align:center;padding:14px;}
   .callout{
     position:relative;background:#fff;border:2px solid var(--ink);border-radius:14px;
@@ -227,6 +243,10 @@
   <div class="card">
     <h2><span class="dot"></span>基础信息</h2>
     <div class="field">
+      <label for="infoDate">记录日期</label>
+      <input id="infoDate" type="date">
+    </div>
+    <div class="field">
       <label>性别</label>
       <div class="seg">
         <label><input type="radio" name="gender" value="f" checked><span>女</span></label>
@@ -252,6 +272,9 @@
     <div class="row">
       <div class="field"><label>臀围（cm）</label><input id="hip" type="number" inputmode="decimal" placeholder="可选" min="50" max="200" step="0.1"></div>
       <div class="field"><label>上臂围（cm）</label><input id="arm" type="number" inputmode="decimal" placeholder="可选" min="15" max="80" step="0.1"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button class="btn ghost" id="infoSaveBtn" style="width:auto;padding:11px 22px;font-size:14.5px;">保存信息</button>
     </div>
   </div>
 
@@ -284,6 +307,15 @@
     </div>
     <div class="bmr-list" id="bmrDetail"></div>
     <div id="compNow" style="margin-top:14px;"></div>
+  </div>
+  </section>
+
+  <!-- 信息（按日期保存的信息快照） -->
+  <section class="panel" id="panel-info">
+  <div class="card">
+    <h2><span class="dot"></span>我的信息</h2>
+    <div class="empty" id="infoEmpty" style="display:none;">还没有保存过信息。<br>去「基础」页填写后，点右下角“保存信息”。</div>
+    <div id="infoView"></div>
   </div>
   </section>
 
@@ -350,6 +382,10 @@
   <button data-target="panel-basic" class="active">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
     <span>基础</span>
+  </button>
+  <button data-target="panel-info">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+    <span>信息</span>
   </button>
   <button data-target="panel-goal">
     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/></svg>
@@ -658,12 +694,99 @@
     const last = JSON.parse(localStorage.getItem('bcl_last')||'{}');
     if(last && Object.keys(last).length){
       if(last.gender){ document.querySelector('input[name=gender][value="'+last.gender+'"]').checked=true; }
-      ['age','height','weight','bf','calf','thigh','waist','chest','hip','arm','tgw','tgbf','targetDate','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
+      ['age','height','weight','bf','calf','thigh','waist','chest','hip','arm','tgw','tgbf','targetDate','ex','infoDate'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
       if(last.act) $('activity').value=last.act;
       if(last.method) $('bmrMethod').value=last.method;
       if(last.phase) $('phase').value=last.phase;
     }
   }catch(e){}
+
+  // ---------- 信息存档（按日期快照） ----------
+  function loadInfo(){
+    try{ return JSON.parse(localStorage.getItem('bcl_info')||'[]'); }catch(e){ return []; }
+  }
+  function saveInfoList(l){ localStorage.setItem('bcl_info', JSON.stringify(l)); }
+  const sortInfo = l => l.slice().sort((a,b)=> a.date < b.date ? -1 : 1);
+  let infoIdx = 0;
+
+  function renderInfo(){
+    const list = sortInfo(loadInfo());
+    const view = $('infoView'), empty = $('infoEmpty');
+    if(!list.length){
+      view.innerHTML=''; empty.style.display='block'; return;
+    }
+    empty.style.display='none';
+    if(infoIdx >= list.length) infoIdx = list.length-1;
+    if(infoIdx < 0) infoIdx = 0;
+    const s = list[infoIdx];
+    const cell=(k,v)=>'<div class="cell"><div class="k">'+k+'</div><div class="v">'+((v===''||v==null)?'—':v)+'</div></div>';
+
+    let html =
+      '<div class="info-nav">'+
+        '<button type="button" id="infoPrev"'+(infoIdx===0?' class="off"':'')+'>上个</button>'+
+        '<div class="info-date">'+s.date+'</div>'+
+        '<button type="button" id="infoNext"'+(infoIdx===list.length-1?' class="off"':'')+'>下个</button>'+
+      '</div>'+
+      '<div class="info-grid">'+
+        cell('性别', s.gender==='f'?'女':'男')+
+        cell('年龄', s.age!==''&&s.age!=null ? s.age+' 岁' : '—')+
+        cell('身高', s.height!==''&&s.height!=null ? s.height+' cm' : '—')+
+        cell('当前体重', s.weight!==''&&s.weight!=null ? s.weight+' kg' : '—')+
+        cell('体脂率', s.bf!==''&&s.bf!=null ? s.bf+' %' : '—')+
+        cell('保存时间', s.savedAt||'—')+
+      '</div>'+
+      '<div class="info-sub">围度（cm）</div>'+
+      '<div class="info-grid">'+
+        cell('小腿围', s.calf)+cell('大腿围', s.thigh)+
+        cell('腰围', s.waist)+cell('胸围', s.chest)+
+        cell('臀围', s.hip)+cell('上臂围', s.arm)+
+      '</div>';
+    if(s.bmr && s.tdee){
+      html += '<div class="result-grid" style="margin-top:16px;">'+
+        '<div class="stat"><div class="k">当时 BMR</div><div class="v">'+s.bmr+'<span class="u">kcal</span></div></div>'+
+        '<div class="stat"><div class="k">当时 TDEE</div><div class="v">'+s.tdee+'<span class="u">kcal</span></div></div>'+
+      '</div>';
+    }
+    html += '<button type="button" class="btn ghost" id="infoDel" style="margin-top:18px;">删除此条记录</button>';
+    view.innerHTML = html;
+
+    const prev=$('infoPrev'), next=$('infoNext');
+    if(prev) prev.onclick = ()=>{ infoIdx--; renderInfo(); };
+    if(next) next.onclick = ()=>{ infoIdx++; renderInfo(); };
+    $('infoDel').onclick = ()=>{
+      if(!confirm('删除 '+s.date+' 的这条信息？')) return;
+      const l = loadInfo();
+      const li = l.findIndex(x=>x.date===s.date);
+      if(li>-1) l.splice(li,1);
+      saveInfoList(l);
+      infoIdx = 0;
+      renderInfo();
+    };
+  }
+
+  $('infoSaveBtn').onclick = ()=>{
+    const date = $('infoDate').value;
+    if(!date){ alert('请先选择记录日期。'); return; }
+    if($('weight').value.trim()===''){ alert('请先填写当前体重再保存。'); return; }
+    const list = loadInfo();
+    const snap = {
+      date,
+      gender:g('gender'),
+      age:$('age').value, height:$('height').value,
+      weight:$('weight').value, bf:$('bf').value.trim(),
+      calf:$('calf').value, thigh:$('thigh').value, waist:$('waist').value,
+      chest:$('chest').value, hip:$('hip').value, arm:$('arm').value,
+      savedAt: new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
+    };
+    try{ if(computed){ const d=compute(); snap.bmr=Math.round(d.bmr); snap.tdee=Math.round(d.tdee); } }catch(e){}
+    const idx = list.findIndex(x=>x.date===date);
+    if(idx>-1) list[idx]=snap; else list.push(snap);  // 同一日期重复保存 = 覆盖更新
+    saveInfoList(list);
+    infoIdx = sortInfo(list).findIndex(x=>x.date===date);
+    persistInput();
+    renderInfo();
+    switchTab('panel-info');
+  };
 
   // 日期框：最早今天；未填时给一个 12 周后的默认目标
   (function initDate(){
@@ -675,6 +798,16 @@
     const today = new Date(); today.setHours(0,0,0,0);
     el.min = iso(today);
     if(!el.value){ el.value = iso(new Date(today.getTime() + 84*86400000)); }
+  })();
+
+  // 信息记录日期：默认今天（可回填过去的日期）
+  (function initInfoDate(){
+    const el = $('infoDate'); if(!el) return;
+    const iso = d => {
+      const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+      return y+'-'+m+'-'+dd;
+    };
+    if(!el.value) el.value = iso(new Date());
   })();
 
   // 保存输入
@@ -689,11 +822,12 @@
   document.querySelectorAll('input,select').forEach(el=> el.addEventListener('change', persistInput));
 
   renderSaved();
+  renderInfo();
   // 首次自动算一次
   run();
 
   // 版本徽章（与 sw.js 的 CACHE 同步改）
-  const APP_VER = 'v11';
+  const APP_VER = 'v12';
   const vb = $('verBadge');
   if(vb) vb.textContent = '当前版本 ' + APP_VER + ' · 已是最新';
 
