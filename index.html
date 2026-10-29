@@ -243,6 +243,23 @@
       <div class="field"><label>当前体重（kg）</label><input id="weight" type="number" inputmode="decimal" value="62" min="30" max="200" step="0.1"></div>
       <div class="field"><label>当前体脂率（%）</label><input id="bf" type="number" inputmode="decimal" placeholder="可选" value="30" min="3" max="60" step="0.1"></div>
     </div>
+    <div class="row">
+      <div class="field"><label>小腿围（cm）</label><input id="calf" type="number" inputmode="decimal" placeholder="可选" min="10" max="100" step="0.1"></div>
+      <div class="field"><label>大腿围（cm）</label><input id="thigh" type="number" inputmode="decimal" placeholder="可选" min="20" max="120" step="0.1"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>腰围（cm）</label><input id="waist" type="number" inputmode="decimal" placeholder="可选" min="40" max="200" step="0.1"></div>
+      <div class="field"><label>胸围（cm）</label><input id="chest" type="number" inputmode="decimal" placeholder="可选" min="50" max="200" step="0.1"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>臀围（cm）</label><input id="hip" type="number" inputmode="decimal" placeholder="可选" min="50" max="200" step="0.1"></div>
+      <div class="field"><label>上臂围（cm）</label><input id="arm" type="number" inputmode="decimal" placeholder="可选" min="15" max="80" step="0.1"></div>
+    </div>
+  </div>
+
+  <!-- 代谢结果（并入基础页，紧接按钮下方） -->
+  <div class="card" id="resultCard" style="display:none;margin-top:22px;">
+    <h2><span class="dot"></span>代谢结果</h2>
     <div class="field">
       <label>活动水平（决定 TDEE）</label>
       <select id="activity">
@@ -262,13 +279,7 @@
         <option value="avg">三者取平均</option>
       </select>
     </div>
-  </div>
-
-  <button class="btn" id="calcBtn">计算我的代谢与方案</button>
-
-  <!-- 代谢结果（并入基础页，紧接按钮下方） -->
-  <div class="card" id="resultCard" style="display:none;margin-top:22px;">
-    <h2><span class="dot"></span>代谢结果</h2>
+    <button class="btn" id="calcBtn" style="margin-bottom:16px;">计算我的代谢与方案</button>
     <div class="result-grid">
       <div class="stat"><div class="k">基础代谢 BMR</div><div class="v"><span id="rBmr">—</span><span class="u">kcal</span></div></div>
       <div class="stat"><div class="k">每日总消耗 TDEE</div><div class="v"><span id="rTdee">—</span><span class="u">kcal</span></div></div>
@@ -646,7 +657,7 @@
     const last = JSON.parse(localStorage.getItem('bcl_last')||'{}');
     if(last && Object.keys(last).length){
       if(last.gender){ document.querySelector('input[name=gender][value="'+last.gender+'"]').checked=true; }
-      ['age','height','weight','bf','tgw','tgbf','targetDate','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
+      ['age','height','weight','bf','calf','thigh','waist','chest','hip','arm','tgw','tgbf','targetDate','ex'].forEach(k=>{ if(last[k]!=null) $(k).value=last[k]; });
       if(last.act) $('activity').value=last.act;
       if(last.method) $('bmrMethod').value=last.method;
       if(last.phase) $('phase').value=last.phase;
@@ -668,7 +679,9 @@
   // 保存输入
   function persistInput(){
     const o={gender:g('gender'),age:$('age').value,height:$('height').value,weight:$('weight').value,
-      bf:$('bf').value,act:$('activity').value,method:$('bmrMethod').value,tgw:$('tgw').value,
+      bf:$('bf').value,calf:$('calf').value,thigh:$('thigh').value,waist:$('waist').value,
+      chest:$('chest').value,hip:$('hip').value,arm:$('arm').value,
+      act:$('activity').value,method:$('bmrMethod').value,tgw:$('tgw').value,
       tgbf:$('tgbf').value,phase:$('phase').value,targetDate:$('targetDate').value,ex:$('ex').value};
     localStorage.setItem('bcl_last', JSON.stringify(o));
   }
