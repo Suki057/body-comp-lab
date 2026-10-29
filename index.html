@@ -340,7 +340,8 @@
 
   <div class="footer-note">
     数据保存在你本机浏览器（localStorage），不上传服务器。<br>
-    本工具为健康参考，不替代专业医疗 / 营养建议。孕期、疾病或服药者请遵医嘱。
+    本工具为健康参考，不替代专业医疗 / 营养建议。孕期、疾病或服药者请遵医嘱。<br>
+    <span id="verBadge" style="display:inline-block;margin-top:8px;padding:3px 10px;border:1px dashed var(--line);border-radius:10px;font-size:11px;color:var(--ink-soft);"></span>
   </div>
   </section>
 </div>
@@ -691,11 +692,32 @@
   // 首次自动算一次
   run();
 
-  // PWA
+  // 版本徽章（与 sw.js 的 CACHE 同步改）
+  const APP_VER = 'v11';
+  const vb = $('verBadge');
+  if(vb) vb.textContent = '当前版本 ' + APP_VER + ' · 已是最新';
+
+  // PWA 更新：每次打开/回前台都主动查新版本，发现新版自动刷新一次
   if('serviceWorker' in navigator){
+    const updateNow = ()=>{
+      navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.update && r.update())).catch(()=>{});
+    };
     window.addEventListener('load',()=>{
-      navigator.serviceWorker.register('sw.js').catch(()=>{});
+      navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
     });
+    // 新 SW 接管后自动整页刷新一次（sessionStorage 防循环）
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      try{
+        if(!sessionStorage.getItem('bc_rld')){
+          sessionStorage.setItem('bc_rld','1');
+          location.reload();
+        }
+      }catch(e){}
+    });
+    // 回前台 / 每隔 60 秒主动检查更新
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) updateNow(); });
+    setInterval(updateNow, 60000);
+    updateNow();
   }
 })();
 </script>
