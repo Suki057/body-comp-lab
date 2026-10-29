@@ -71,7 +71,7 @@
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:6px;}
   .field input,.field select{
-    width:100%;padding:11px 12px;font-size:15px;border:1px solid var(--line);
+    width:100%;padding:11px 12px;font-size:16px;border:1px solid var(--line);
     border-radius:11px;background:#fbfdfc;color:var(--ink);outline:none;
   }
   .field input:focus,.field select:focus{border-color:var(--primary);background:#fff;}
@@ -533,7 +533,16 @@
     $('goalOut').innerHTML = goalHtml;
 
     // macros
-    const proteinPerKg = d.phase==='cut'?2.0 : d.phase==='bulk'?1.8 : 1.6;
+    // 蛋白质系数按热量缺口分档：缺口越大越需要高蛋白保肌
+    let proteinPerKg;
+    if(d.phase==='cut'){
+      const deficit = (d.tdee + d.exDaily) - d.dailyIntake; // 每日缺口
+      proteinPerKg = deficit > 500 ? 2.0 : (deficit >= 250 ? 1.8 : 1.6);
+    } else if(d.phase==='bulk'){
+      proteinPerKg = 1.8;
+    } else {
+      proteinPerKg = 1.6;
+    }
     const protein = proteinPerKg * d.W;
     const fatCals = d.dailyIntake * 0.27;
     const fatG = fatCals/9;
@@ -548,7 +557,8 @@
       '<div style="margin-top:8px;">'+
       (d.phase==='cut'?'<span class="chip">高蛋白保肌</span><span class="chip">碳水训练日集中</span><span class="chip">纤维拉满</span>':
         d.phase==='bulk'?'<span class="chip">盈余分给碳水</span><span class="chip">训练前后加餐</span><span class="chip">别过量脂肪</span>':
-        '<span class="chip">均衡分配</span><span class="chip">维持活动量</span>')+'</div>';
+        '<span class="chip">均衡分配</span><span class="chip">维持活动量</span>')+'</div>'+
+      '<div class="field-note" style="margin-top:8px;">蛋白质＝当前体重 '+d.W+' kg × '+proteinPerKg+' g/kg'+(d.phase==='cut'?'（按每日缺口自动分档：缺口<250kcal→1.6，250–500→1.8，>500→2.0。缺口小、节奏稳时不需要顶格吃蛋白）':'')+'</div>';
 
     // training
     let train = '<div class="plan-text"><b>动感超人陪练 · 运动塑形建议（'+tagTxt+'）</b><ul>';
